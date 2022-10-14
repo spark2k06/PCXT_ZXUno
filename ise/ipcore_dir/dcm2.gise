@@ -19,10 +19,11 @@
 
   <version xmlns="http://www.xilinx.com/XMLSchema">11.1</version>
 
-  <sourceproject xmlns="http://www.xilinx.com/XMLSchema" xil_pn:fileType="FILE_XISE" xil_pn:name="ZXUno_2MB.xise"/>
+  <sourceproject xmlns="http://www.xilinx.com/XMLSchema" xil_pn:fileType="FILE_XISE" xil_pn:name="dcm2.xise"/>
 
   <files xmlns="http://www.xilinx.com/XMLSchema">
-    <file xil_pn:fileType="FILE_NCD" xil_pn:name="ZXUno_PCXT_2MB_guide.ncd" xil_pn:origination="imported"/>
+    <file xil_pn:fileType="FILE_ASY" xil_pn:name="dcm2.asy" xil_pn:origination="imported"/>
+    <file xil_pn:fileType="FILE_VEO" xil_pn:name="dcm2.veo" xil_pn:origination="imported"/>
   </files>
 
   <transforms xmlns="http://www.xilinx.com/XMLSchema"/>

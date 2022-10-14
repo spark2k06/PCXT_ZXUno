@@ -49,8 +49,7 @@ module PERIPHERALS (
 //	input		wire	[31:0]		joy1,
 //	input		wire	[15:0]		joya0,
 //	input		wire	[15:0]		joya1,
-	input		wire					clk_en_opl2,
-	output	wire	[15:0]		jtopl2_snd_e,
+	input		wire					clk_en_tandy_snd,
 	input		wire					adlibhide,
 //	input		wire					tandy_video,
 	output	wire	[7:0]			tandy_snd_e,
@@ -111,16 +110,14 @@ module PERIPHERALS (
 //	wire joystick_select = (iorq && ~address_enable_n) && (address[15:3] == (16'h0200 >> 3));
 	wire nmi_mask_register_n = ~(((tandy_video && iorq) && ~address_enable_n) && (address[15:3] == (16'h00a0 >> 3)));
 	wire tandy_chip_select_n = ~((iorq && ~address_enable_n) && (address[15:3] == (16'h00c0 >> 3)));
-	wire opl_chip_select_n = ~((iorq && ~address_enable_n) && (address[15:1] == (16'h0388 >> 1)));
 	wire cga_chip_select_n = ~((~iorq && ~address_enable_n) && (address[19:15] == 5'b10111));
 	wire bios_select_n = ~((~iorq && ~address_enable_n) && (address[19:13] == 7'b1111111));
 	wire xtide_select_n = ~((~iorq && ~address_enable_n) && (address[19:14] == 6'b111011));
 	wire uart_cs = ~address_enable_n && ({address[15:3], 3'd0} == 16'h03f8);
 	wire lpt_cs = (iorq && ~address_enable_n) && (address[15:0] == 16'h0378);
 	wire tandy_page_cs = (iorq && ~address_enable_n) && (address[15:0] == 16'h03df);
-	wire ram_select_n;
-	//assign ram_select_n = ~(((~iorq && ~address_enable_n) && ~(address[19:16] == 4'b1111)) && ~(address[19:14] == 6'b111011));
-	assign ram_select_n = ~(~iorq && ~address_enable_n);	
+	//wire ram_select_n = ~(((~iorq && ~address_enable_n) && ~(address[19:16] == 4'b1111)) && ~(address[19:14] == 6'b111011));
+	wire ram_select_n = ~(~iorq && ~address_enable_n);	
 	wire [3:0] ems_page_address = (ems_address == 2'b00 ? 4'b1010 : (ems_address == 2'b01 ? 4'b1100 : 4'b1101));
 	wire ems_oe = ((iorq && ~address_enable_n) && ems_enabled) && ({address[15:2], 2'd0} == 16'h0260);
 	reg [0:3] ena_ems;
@@ -286,26 +283,10 @@ module PERIPHERALS (
 			ps2_clock_out = 1'b1;
 		else
 			ps2_clock_out = ~((keybord_irq | ~ps2_send_clock) | ~ps2_reset_n);
-	
-	wire [7:0] jtopl2_dout;
-	wire [7:0] opl32_data;
-	assign opl32_data = (adlibhide ? 8'hff : jtopl2_dout);
-	jtopl jtopl2_inst(
-		.rst(reset),
-		.clk(clock),
-		.cen(clk_en_opl2),
-		.din(internal_data_bus),
-		.dout(jtopl2_dout),
-		.addr(address[0]),
-		.cs_n(opl_chip_select_n),
-		.wr_n(io_write_n),
-		.irq_n(),
-		.snd(jtopl2_snd_e),
-		.sample()
-	);
+			
 	sn76489_top sn76489(
 		.clock_i(clock),
-		.clock_en_i(clk_en_opl2),
+		.clock_en_i(clk_en_tandy_snd),
 		.res_n_i(~reset),
 		.ce_n_i(tandy_chip_select_n),
 		.we_n_i(io_write_n),
@@ -313,6 +294,7 @@ module PERIPHERALS (
 		.d_i(internal_data_bus),
 		.aout_o(tandy_snd_e)
 	);
+	
 	reg keybord_interrupt_ff;
 	always @(posedge clock or posedge reset)
 		if (reset) begin
@@ -555,7 +537,7 @@ module PERIPHERALS (
 	);
 	assign SRAM_DATA = (~SRAM_WE_n ? SRAM_DATA_A_o : 8'hzz);
 	
-	bram #(.AW(13), .filename("jukost.hex")) bios
+	bram #(.AW(13), .filename("supersoft.hex")) bios
 	(
 		.clka(clock),
 		.ena(~bios_select_n),
@@ -628,10 +610,6 @@ module PERIPHERALS (
 		else if (CGA_CRTC_OE_2) begin
 			data_bus_out_from_chipset <= 1'b1;
 			data_bus_out <= CGA_CRTC_DOUT_2;
-		end
-		else if (~opl_chip_select_n && ~io_read_n) begin
-			data_bus_out_from_chipset <= 1'b1;
-			data_bus_out <= opl32_data;
 		end
 		else if (uart_cs && ~io_read_n) begin
 			data_bus_out_from_chipset <= 1'b1;
