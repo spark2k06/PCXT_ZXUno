@@ -6,7 +6,7 @@ module system_512KB(
 	input		wire					clk_chipset,
 	input		wire					clk_vga,	 
 	input		wire					clk_uart,
-	input		wire					clk_opl2,
+	input		wire					clk_tandy_snd,
 
 	output	wire	[18:0]		SRAM_ADDR,
 	inout		wire	[7:0]			SRAM_DATA,
@@ -19,8 +19,14 @@ module system_512KB(
 	input		wire					uart_rx,
 	output	wire					uart_tx,
 
-	inout		wire					clkps2,
-	inout		wire					dataps2,
+//	inout		wire					clkps2,
+//	inout		wire					dataps2,
+
+
+	input 	wire 					ps2_clock_in,
+	input 	wire 					ps2_data_in,
+	output	wire 					ps2_clock_out,
+	output	wire 					ps2_data_out,
 
 	output	wire					AUD_L,
 	output	wire					AUD_R
@@ -51,18 +57,10 @@ reg clk_cpu = 1'b0;
 reg pclk = 1'b0;
 reg peripheral_clock;
 
-reg ps2_clock_in;
-reg ps2_data_in;
-wire ps2_clock_out;
-wire ps2_data_out;
-
-/*
-assign ps2_clock_in = clkps2;
-assign clkps2 = (ps2_clock_out == 1'b0) ? 1'b0 : 1'bZ;
-
-assign ps2_data_in = dataps2;
-assign dataps2 = (ps2_data_out == 1'b0) ? 1'b0 : 1'bZ;
-*/
+//reg ps2_clock_in;
+//reg ps2_data_in;
+//wire ps2_clock_out;
+//wire ps2_data_out;
 
 always @(posedge clk_vga) begin // 28.636MHz
 	clk_14_318 <= ~clk_14_318; // 14.318Mhz
@@ -80,7 +78,7 @@ clk_div3 clk_normal // 4.77MHz
 always @(posedge clk_4_77)
 	peripheral_clock <= ~peripheral_clock; // 2.385Mhz
 	
-
+/*
 assign clkps2 = (ps2_clock_out == 1'b0) ? 1'b0 : 1'bZ;
 assign dataps2 = (ps2_data_out == 1'b0) ? 1'b0 : 1'bZ;
 
@@ -88,6 +86,51 @@ always @(posedge peripheral_clock) begin
 	ps2_clock_in <= clkps2;
 	ps2_data_in <= dataps2;
 end
+*/
+
+
+
+    //
+    // Input F/F PS2_CLK
+    //
+    reg   device_clock_ff;
+    reg   device_clock;
+
+    always @(negedge clk_chipset, posedge reset)
+    begin
+        if (reset)
+        begin
+            device_clock_ff <= 1'b0;
+            device_clock    <= 1'b0;
+        end
+        else
+        begin
+            device_clock_ff <= ps2_clock_in;
+            device_clock    <= device_clock_ff ;
+        end
+    end
+
+
+    //
+    // Input F/F PS2_DAT
+    //
+    reg   device_data_ff;
+    reg   device_data;
+
+    always @(negedge clk_chipset, posedge reset)
+    begin
+        if (reset)
+        begin
+            device_data_ff <= 1'b0;
+            device_data    <= 1'b0;
+        end
+        else
+        begin
+            device_data_ff <= ps2_data_in;
+            device_data    <= device_data_ff;
+        end
+    end
+
 	
 wire  biu_done;
 reg  turbo_mode;
@@ -116,16 +159,16 @@ always @(posedge clk_chipset) begin
     pclk         <= pclk_ff_2;
 end
 
-reg   clk_opl2_ff_1;
-reg   clk_opl2_ff_2;
-reg   clk_opl2_ff_3;
-reg   cen_opl2;
+reg   clk_tandy_snd_ff_1;
+reg   clk_tandy_snd_ff_2;
+reg   clk_tandy_snd_ff_3;
+reg   cen_tandy_snd;
 
 always @(posedge clk_chipset) begin
-    clk_opl2_ff_1 <= clk_opl2;
-    clk_opl2_ff_2 <= clk_opl2_ff_1;
-    clk_opl2_ff_3 <= clk_opl2_ff_2;
-    cen_opl2 <= clk_opl2_ff_2 & ~clk_opl2_ff_3;
+    clk_tandy_snd_ff_1 <= clk_tandy_snd;
+    clk_tandy_snd_ff_2 <= clk_tandy_snd_ff_1;
+    clk_tandy_snd_ff_3 <= clk_tandy_snd_ff_2;
+    cen_tandy_snd <= clk_tandy_snd_ff_2 & ~clk_tandy_snd_ff_3;
 end
 
 wire reset_wire = splashscreen;
@@ -250,13 +293,10 @@ reg splash_status = 1'b0;
 		clk_uart_en   <= ~clk_uart_ff_3 & clk_uart_ff_2;
    end
 	
-   wire [15:0]jtopl2_snd_e;
-//	wire [15:0]tandy_snd_e;
+	wire [15:0]tandy_snd_e;
 	reg [31:0]sndval = 0;	
 	
-	//wire [16:0]sndmix = (({jtopl2_snd_e[15], jtopl2_snd_e}) << 1) + {tandy_snd_e, 6'd0} + (speaker_out << 13); // signed mixer
-	wire [16:0]sndmix = (({jtopl2_snd_e[15], jtopl2_snd_e}) << 2) + (speaker_out << 13); // signed mixer
-	//wire [16:0]sndmix = (({jtopl2_snd_e[15], jtopl2_snd_e}) << 2) + (speaker_out << 15); // signed mixer
+	wire [16:0]sndmix = ({tandy_snd_e, 6'd0} << 2) + (speaker_out << 13); // signed mixer
 	wire [15:0]sndamp = (~|sndmix[16:15] | &sndmix[16:15]) ? {!sndmix[15], sndmix[14:0]} : {16{!sndmix[16]}}; // clamp to [-32768..32767] and add 32878
 	wire sndsign = sndval[31:16] < sndamp;
 	
@@ -320,20 +360,24 @@ reg splash_status = 1'b0;
         .port_b_out                         (port_b_out),
 		  .port_c_in                          (port_c_in),
 	     .speaker_out                        (speaker_out),   
-		  .ps2_clock                          (ps2_clock_in),
-	     .ps2_data                           (ps2_data_in),
+//		  .ps2_clock                          (ps2_clock_in),
+//	     .ps2_data                           (ps2_data_in),
+//	     .ps2_clock_out                      (ps2_clock_out),
+//	     .ps2_data_out                       (ps2_data_out),
+		  .ps2_clock                          (device_clock),
+	     .ps2_data                           (device_data),
 	     .ps2_clock_out                      (ps2_clock_out),
 	     .ps2_data_out                       (ps2_data_out),
+		  	  
 //		  .joy_opts                           (joy_opts),                          //Joy0-Disabled, Joy0-Type, Joy1-Disabled, Joy1-Type, turbo_sync
 //      .joy0                               (status[28] ? joy1 : joy0),
 //      .joy1                               (status[28] ? joy0 : joy1),
 //		  .joya0                              (status[28] ? joya1 : joya0),
 //		  .joya1                              (status[28] ? joya0 : joya1),
-		  .clk_en_opl2                        (cen_opl2),
-		  .jtopl2_snd_e                       (jtopl2_snd_e),
-//		  .tandy_snd_e                        (tandy_snd_e),
+		  .clk_en_tandy_snd                   (cen_tandy_snd),
+		  .tandy_snd_e                        (tandy_snd_e),
 //		  .adlibhide                          (adlibhide),
-//		  .tandy_video                        (tandy_mode),
+		  .tandy_video                        (tandy_mode),
 //		  .tandy_16_gfx                       (tandy_16_gfx),
 //		  .ioctl_download                     (ioctl_download),
 //		  .ioctl_index                        (ioctl_index),

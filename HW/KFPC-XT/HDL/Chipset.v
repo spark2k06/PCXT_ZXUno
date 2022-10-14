@@ -69,11 +69,9 @@ module CHIPSET (
 	input		wire	[31:0] 		joy1,
 	input		wire	[15:0]		joya0,
 	input		wire	[15:0]		joya1,
-	input		wire					clk_en_opl2,
-	output	wire	[15:0]		jtopl2_snd_e,
-	input		wire					adlibhide,
-//	input		wire					tandy_video,
-//	output	wire	[7:0]			tandy_snd_e,
+	input		wire					clk_en_tandy_snd,
+	input		wire					tandy_video,
+	output	wire	[7:0]			tandy_snd_e,
 	output	wire					tandy_16_gfx,
 	input		wire					ioctl_download,
 	input		wire	[7:0]			ioctl_index,
@@ -116,7 +114,7 @@ module CHIPSET (
 	wire ems_b2;
 	wire ems_b3;
 	wire ems_b4;
-//	wire tandy_snd_rdy;
+	wire tandy_snd_rdy;
 //	wire cga_vram_rdy;
 
 	always @(posedge clock)
@@ -141,7 +139,7 @@ module CHIPSET (
 		.dma_ready(dma_ready),
 		.dma_wait_n(dma_wait_n),
 //		.io_channel_ready((io_channel_ready & tandy_snd_rdy) && cga_vram_rdy),
-		.io_channel_ready(io_channel_ready),
+		.io_channel_ready(io_channel_ready & tandy_snd_rdy),
 		.io_read_n(io_read_n),
 		.io_write_n(io_write_n),
 		.memory_read_n(memory_read_n),
@@ -237,12 +235,10 @@ module CHIPSET (
 //		.joya1(joya1),
 		.ps2_clock_out(ps2_clock_out),
 		.ps2_data_out(ps2_data_out),
-		.clk_en_opl2(clk_en_opl2),
-		.jtopl2_snd_e(jtopl2_snd_e),
-		.adlibhide(adlibhide),
-//		.tandy_video(tandy_video),
-//		.tandy_snd_e(tandy_snd_e),
-//		.tandy_snd_rdy(tandy_snd_rdy),
+		.clk_en_tandy_snd(clk_en_tandy_snd),
+		.tandy_video(tandy_video),
+		.tandy_snd_e(tandy_snd_e),
+		.tandy_snd_rdy(tandy_snd_rdy),
 		.tandy_16_gfx(tandy_16_gfx),
 		.ioctl_download(ioctl_download),
 		.ioctl_index(ioctl_index),
